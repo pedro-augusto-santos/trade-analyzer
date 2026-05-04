@@ -1,5 +1,13 @@
 import pandas as pd
 
+texto = "TRADE ANALYZER"
+
+print("=" * 50)
+print(f"{texto.center(50)}")
+print("=" * 50)
+
+# --- INÍCIO DO PROGRAMA ---
+
 df = None
 # df começa vazio para caso tenha erro no arquivo o programanão quebre
 
@@ -66,8 +74,5 @@ if df is not None:
        elif preco_atual < valor_alvo:
         print("Abaixo do valor alvo (possível oportunidade)")
        else:
-        print("No valor exato do alvo")
-
-
-
-
+         print("No valor exato do alvo")
+       
