@@ -7,24 +7,28 @@ print(f"{texto.center(50)}")
 print("=" * 50)
 
 # --- INÍCIO DO PROGRAMA ---
+def carregar_dados():
+   # Lê o CSV e retorna o dataframe. Se der erro, retorna None.
 
-df = None
-# df começa vazio para caso tenha erro no arquivo o programanão quebre
+    df = None
+    # df começa vazio para caso tenha erro no arquivo o programanão quebre
 
-try:
-    df = pd.read_csv("vendas_acoes.csv", sep=",")
+    try:
+     df = pd.read_csv("vendas_acoes.csv", sep=",")
 
-except FileNotFoundError:
-    print("Erro: Arquivo não encontrado. Verifique o nome ou o caminho")
-except pd.errors.EmptyDataError:
-    print("Erro: O arquivo está vazio")
-except pd.errors.ParserError:
-    print("Erro: Problemas na estrutura do CSV")
-except Exception as e:
-    print(f"Erro inesperado: {e}")
+    except FileNotFoundError:
+      print("Erro: Arquivo não encontrado. Verifique o nome ou o caminho")
+    except pd.errors.EmptyDataError:
+      print("Erro: O arquivo está vazio")
+    except pd.errors.ParserError:
+      print("Erro: Problemas na estrutura do CSV")
+    except Exception as e:
+      print(f"Erro inesperado: {e}")
+    return df
 
-if df is not None:
-
+def calcular_metricas(df):
+  #Calcula compras,vendas,lucro e média
+   
     print(df.head())
     print("\n")
 
@@ -47,6 +51,10 @@ if df is not None:
 
     print()
 
+    return resultado, media
+
+def menu():
+  #Verifica se o usuário quer ou não continuar     
     while True:
         insights = input("Deseja obter mais análises? (s/n): ").lower().strip()
         if insights in ["s", "n"]:
@@ -54,25 +62,53 @@ if df is not None:
         else:
             print("Resposta inválida. Digite s ou n.")
 
-    print()
+        print()
+    return insights
 
-    
-    valor_alvo = 35  
+def gerar_insights(df):
+  #Analisa cada ativo e compara com o alvo
+
+    valor_alvo = 35
 
     for ativo in df["Ativo"].unique():
-       #pega todos os ativos únicos
-       preco_atual = df[df["Ativo"] == ativo]["Preco"].iloc[-1]
-       #pega o ultimo preço daquele ativo
+        # pega todos os ativos únicos
 
-       print(f"\nAnalisando {ativo}...")
-       print(f"Preço atual: {preco_atual}")
-       print(f"Valor alvo: {valor_alvo}")
+        preco_atual = df[df["Ativo"] == ativo]["Preco"].iloc[-1]
+        # pega o último preço daquele ativo
 
-       if preco_atual > valor_alvo:
-        #Aqui é decisão.Acima == caro, Abaixo = barato
-        print("Acima do valor alvo (caro no momento)")
-       elif preco_atual < valor_alvo:
-        print("Abaixo do valor alvo (possível oportunidade)")
-       else:
-         print("No valor exato do alvo")
+        print(f"\nAnalisando {ativo}...")
+        print(f"Preço atual: {preco_atual}")
+        print(f"Valor alvo: {valor_alvo}")
+
+        # Aqui é decisão:
+        # Acima == caro
+        # Abaixo == barato
+
+        if preco_atual > valor_alvo:
+            print("Acima do valor alvo (caro no momento)")
+
+        elif preco_atual < valor_alvo:
+            print("Abaixo do valor alvo (possível oportunidade)")
+
+        else:
+            print("No valor exato do alvo")
+
+    return preco_atual, valor_alvo
+
+def main():
+
+    df = carregar_dados()
+
+    if df is not None:
+
+        calcular_metricas(df)
+
+        opcao = menu()
+
+        if opcao == "s":
+            gerar_insights(df)
+
+        else:
+            print("Programa encerrado.")
        
+main()
