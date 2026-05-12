@@ -9,13 +9,12 @@ print("=" * 50)
 
 # --- INÍCIO DO PROGRAMA ---
 def carregar_dados():
-    """Lê o CSV e retorna o dataframe. Se der erro, retorna None."""
-
-    # df começa vazio para caso tenha erro no arquivo o programa não quebre
+    arquivo = input("Nome do arquivo CSV (ex: vendas_acoes.csv): ").strip()
+    
     df = None
 
     try:
-        df = pd.read_csv("vendas_acoes.csv", sep=",")
+        df = pd.read_csv(arquivo, sep=",")
 
     except FileNotFoundError:
         print("Erro: Arquivo não encontrado. Verifique o nome ou o caminho")
@@ -44,6 +43,7 @@ def calcular_metricas(df):
     vendas = df[df["Tipo_Ordem"] == "Venda"].groupby("Ativo")["Valor_total"].sum()
 
     resultado = vendas - compras
+    retorno_percentual = ((vendas - compras) / compras) * 100
 
     # .fillna(0) troca valores vazios por 0 e .mean() calcula a média
     media = resultado.fillna(0).mean()
@@ -51,6 +51,7 @@ def calcular_metricas(df):
     print("Compras:\n", compras)
     print("\nVendas:\n", vendas)
     print("\nLucros por ativo:\n", resultado)
+    print("\nRetorno percentual por ativo:\n",retorno_percentual)
     print("\nMédia de lucro/prejuízo:", media)
     print()
 
@@ -71,30 +72,44 @@ def menu():
 
     return insights
 
-
-def gerar_insights(df, valor_alvo=35):
+def gerar_insights(df, valores_alvo):
     """Analisa cada ativo e compara com o valor alvo."""
 
     for ativo in df["Ativo"].unique():
-        # Pega todos os ativos únicos e o último preço de cada um
         preco_atual = df[df["Ativo"] == ativo]["Preco"].iloc[-1]
 
         print(f"\nAnalisando {ativo}...")
-        print(f"Preço atual: {preco_atual}")
-        print(f"Valor alvo: {valor_alvo}")
+        print(f"Preço atual: R$ {preco_atual:.2f}")
+
+        alvo = valores_alvo.get(ativo)
+
+        if alvo is None:
+            print(f"{ativo}: Valor alvo não cadastrado")
+            continue
+
+        print(f"Valor alvo: R$ {alvo:.2f}")
 
         # Decisão:
         # Acima do alvo == caro
         # Abaixo do alvo == barato
-        if preco_atual > valor_alvo:
+        if preco_atual > alvo:
             print("Acima do valor alvo (caro no momento)")
-        elif preco_atual < valor_alvo:
+        elif preco_atual < alvo:
             print("Abaixo do valor alvo (possível oportunidade)")
         else:
             print("No valor exato do alvo")
 
-
 def main():
+
+    valores_alvo = {
+    "PETR4": 38,
+    "VALE3": 78,
+    "ITUB4": 29,
+    "BBDC4": 50,
+    "ABEV3": 12
+    }
+    
+
     df = carregar_dados()
 
     if df is not None:
@@ -103,7 +118,7 @@ def main():
         opcao = menu()
 
         if opcao == "s":
-            gerar_insights(df)
+            gerar_insights(df,valores_alvo)
         else:
             print("Programa encerrado.")
 
