@@ -1,4 +1,6 @@
 import pandas as pd
+from time import sleep
+import sqlite3
 
 texto = "TRADE ANALYZER"
 
@@ -9,15 +11,19 @@ print("=" * 50)
 print()
 
 
-# --- INÍCIO DO PROGRAMA ---
 def carregar_dados():
     arquivo = input("Nome do arquivo CSV (ex: vendas_acoes.csv): ").strip()
     print()
-    
+
     df = None
 
     try:
         df = pd.read_csv(arquivo, sep=",")
+        print("Carregando dados...")
+        sleep(1)
+        print("Dados carregados com sucesso!")
+        sleep(0.5)
+        print()
 
     except FileNotFoundError:
         print("Erro: Arquivo não encontrado. Verifique o nome ou o caminho")
@@ -30,54 +36,88 @@ def carregar_dados():
 
     return df
 
+def validar_colunas(df):
+    colunas_esperadas = {"Data", "Ativo", "Preco", "Tipo_Ordem", "Quantidade"}
+    colunas_faltando = colunas_esperadas - set(df.columns)
+    
+    if colunas_faltando:
+        print(f"Erro: CSV inválido. Colunas faltando: {colunas_faltando}")
+        return False
+    
+    return True
+
+def criar_banco():
+    conn = sqlite3.connect("mercado.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS historico_precos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Data TEXT,
+            Ativo TEXT,
+            Preco REAL,
+            Tipo_Ordem TEXT,
+            Quantidade INTEGER,
+            Valor_total REAL
+        )
+    """)
+    
+    conn.commit()
+    conn.close()
+
+def salvar_no_banco(df):
+    conn = sqlite3.connect("mercado.db")
+    df.to_sql("historico_precos", conn, if_exists = "append", index = False)
+    conn.close()
+
+
+def banco_vazio():
+    conn = sqlite3.connect("mercado.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM historico_precos")
+    total = cursor.fetchone()[0]
+    conn.close()
+    return total == 0
+
+
 
 def calcular_metricas(df):
     """Calcula compras, vendas, lucro e média..."""
 
-
-    # Cria uma nova coluna que mostra quanto dinheiro foi movimentado por operação
     df["Valor_total"] = df["Quantidade"] * df["Preco"]
 
-    # Filtro booleano: TRUE --> mantém linha | FALSE --> remove linha
-    # Agrupa os ativos e soma o valor total de cada grupo
     compras = df[df["Tipo_Ordem"] == "Compra"].groupby("Ativo")["Valor_total"].sum()
-
     vendas = df[df["Tipo_Ordem"] == "Venda"].groupby("Ativo")["Valor_total"].sum()
 
     tot_investido = df[df["Tipo_Ordem"] == "Compra"]["Valor_total"].sum()
-
     tot_resgatado = df[df["Tipo_Ordem"] == "Venda"]["Valor_total"].sum()
 
-    #Lucro por ativo
     lucro_ativo = vendas - compras
 
     ativo_mais_lucrou = lucro_ativo.idxmax()
-
     ativo_menos_lucrou = lucro_ativo.idxmin()
-    
-    #Lucro total da carteira
+
     lucro_tot = lucro_ativo.sum()
 
     retorno_percentual = ((vendas - compras) / compras) * 100
 
     qty_ativos = df["Ativo"].nunique()
-
     total_de_operacoes = len(df)
 
-    # .fillna(0) troca valores vazios por 0 e .mean() calcula a média
     media = lucro_ativo.fillna(0).mean()
 
     return {
-    "tot_investido": tot_investido,
-    "tot_resgatado": tot_resgatado,
-    "media": media,
-    "total_operacoes": total_de_operacoes,
-    "qty_ativos": qty_ativos,
-    "retorno_percentual": retorno_percentual,
-    "lucro_total": lucro_tot,
-    "ativo_menos_lucrou": ativo_menos_lucrou,
-    "ativo_mais_lucrou": ativo_mais_lucrou,
-}
+        "tot_investido": tot_investido,
+        "tot_resgatado": tot_resgatado,
+        "media": media,
+        "total_operacoes": total_de_operacoes,
+        "qty_ativos": qty_ativos,
+        "retorno_percentual": retorno_percentual,
+        "lucro_total": lucro_tot,
+        "ativo_menos_lucrou": ativo_menos_lucrou,
+        "ativo_mais_lucrou": ativo_mais_lucrou,
+    }
+
 
 def menu():
     texto_menu = "MENU"
@@ -92,19 +132,19 @@ def menu():
     print("[5] Mostrar tudo")
     print("[0] Sair")
     print()
-    
 
     while True:
-        #Filtrando a String opção
         opcao = input("Por favor escolha uma opção: ").strip()
-    
+
         if opcao in ["0", "1", "2", "3", "4", "5"]:
-            #return tambem funciona como saída do loop
             return opcao
         else:
             print("Opção inválida. Digite um número entre 0 e 5.")
 
+
 def gerar_insights(opcao, metricas, valores_alvo, df):
+
+    print("-" * 30)
 
     if opcao == "1":
         print(f"Total investido: R$ {metricas['tot_investido']:.2f}")
@@ -115,27 +155,17 @@ def gerar_insights(opcao, metricas, valores_alvo, df):
         print(f"Total de operações: {metricas['total_operacoes']}")
 
     elif opcao == "2":
-        #Lucro por ativo
         print(f"Ativo que mais lucrou: {metricas['ativo_mais_lucrou']}")
         print(f"Ativo que mais perdeu: {metricas['ativo_menos_lucrou']}")
         print(f"Lucro total da carteira: R$ {metricas['lucro_total']:.2f}")
-       
 
-    
     elif opcao == "3":
-        #Retorno Percentual
-        print(f"Retorno percentual:{metricas['retorno_percentual']}")
-        
+        print(f"Retorno percentual por ativo:\n{metricas['retorno_percentual']}")
+
     elif opcao == "4":
-        #Analisa ativo vs valor alvo
         for ativo in df["Ativo"].unique():
-            #Percorre cada ativo único do CSV e ignora repetidos.
-
             preco_atual = df[df["Ativo"] == ativo]["Preco"].iloc[-1]
-            #filtra o DataFrame, mantém só as linhas daquele ativo. pega só a coluna Preço dessas linhas, e pega o último elemento.
-
             alvo = valores_alvo.get(ativo)
-            #Busca a chave ativo ddentro do dicionário
 
             print(f"\n{ativo}")
             print(f"Preço atual: R$ {preco_atual:.2f}")
@@ -144,9 +174,9 @@ def gerar_insights(opcao, metricas, valores_alvo, df):
                 print("Valor alvo não cadastrado")
                 continue
 
-            print(f"Valor alvo: R$ {alvo:.2f}")  # ← dentro do for
+            print(f"Valor alvo: R$ {alvo:.2f}")
 
-            if preco_atual > alvo:              # ← dentro do for
+            if preco_atual > alvo:
                 print("Acima do valor alvo (caro no momento)")
             elif preco_atual < alvo:
                 print("Abaixo do valor alvo (possível oportunidade)")
@@ -154,7 +184,6 @@ def gerar_insights(opcao, metricas, valores_alvo, df):
                 print("No valor exato do alvo")
 
     elif opcao == "5":
-        #Retorna tudo
         print(f"\nTotal investido: R$ {metricas['tot_investido']:.2f}")
         print(f"Total resgatado: R$ {metricas['tot_resgatado']:.2f}")
         print(f"Lucro total: R$ {metricas['lucro_total']:.2f}")
@@ -165,10 +194,8 @@ def gerar_insights(opcao, metricas, valores_alvo, df):
         print(f"Ativo que mais perdeu: {metricas['ativo_menos_lucrou']}")
         print(f"\nRetorno percentual por ativo:\n{metricas['retorno_percentual']}")
 
+    print()
 
-    elif opcao == "0":
-        print("Encerrando...")
-        return
 
 def main():
 
@@ -183,8 +210,24 @@ def main():
     df = carregar_dados()
 
     if df is not None:
-        metricas = calcular_metricas(df)
-        opcao = menu()
-        gerar_insights(opcao, metricas, valores_alvo, df)
-    
+        criar_banco()
+        
+
+        if banco_vazio():
+            salvar_no_banco(df)
+
+        if not validar_colunas(df):
+            print("Corrija o CSV e tente novamente.")
+        else:
+            metricas = calcular_metricas(df)
+            
+            while True:
+                opcao = menu()
+                if opcao == "0":
+                    print("Encerrando...")
+                    sleep(2)
+                    break
+                gerar_insights(opcao, metricas, valores_alvo, df)
+
+
 main()
