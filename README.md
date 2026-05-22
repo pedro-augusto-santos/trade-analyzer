@@ -1,136 +1,114 @@
 # 📊 Trade Analyzer
 
-Projeto em Python utilizando **Pandas** para análise de operações com ações a partir de um arquivo CSV.
-
----
+Sistema de análise financeira em Python para análise de operações com ações a partir de arquivos CSV, com persistência de dados via SQLite.
 
 ## 🚀 Objetivo
 
-Transformar dados brutos de operações financeiras em **insights claros e úteis**, como:
-
-* Total investido por ativo
-* Total vendido por ativo
-* Lucro ou prejuízo
-* Média geral de desempenho
-* Análise de preço atual vs valor alvo
-
----
+Transformar dados brutos de operações financeiras em insights claros e úteis, permitindo que o usuário consulte métricas da sua carteira de forma interativa através de um menu no terminal.
 
 ## 📂 Estrutura do Projeto
-
 ```
 Trade-Analyzer/
 │
 ├── main.py
 ├── vendas_acoes.csv
+├── mercado.db (gerado automaticamente)
 └── README.md
-```
 
----
+```
 
 ## 📥 Estrutura do CSV
 
-O arquivo `vendas_acoes.csv` deve conter as seguintes colunas:
+O arquivo CSV deve conter as seguintes colunas:
 
-* `Data`
-* `Ativo`
-* `Preco`
-* `Quantidade`
-* `Tipo_Ordem` (Compra ou Venda)
-
----
+| Coluna     | Tipo    | Exemplo         |
+| ---------- | ------- | --------------- |
+| Data       | TEXT    | 2026-01-02      |
+| Ativo      | TEXT    | PETR4           |
+| Preco      | REAL    | 30.00           |
+| Quantidade | INTEGER | 100             |
+| Tipo_Ordem | TEXT    | Compra ou Venda |
 
 ## ⚙️ Funcionalidades
 
-### 📌 Leitura e validação
+### 📌 Leitura e Validação
+- Input do nome do arquivo pelo usuário
+- Tratamento de erros (arquivo não encontrado, vazio, inválido)
+- Validação das colunas obrigatórias antes do processamento
 
-* Tratamento de erros (arquivo não encontrado, vazio ou inválido)
+### 📌 Banco de Dados (SQLite)
+- Criação automática do banco `mercado.db`
+- Persistência do histórico de operações entre sessões
+- Proteção contra duplicatas — o mesmo CSV não é inserido duas vezes
 
-### 📌 Processamento
+### 📌 Métricas Calculadas
+- Total investido e total resgatado da carteira
+- Lucro/prejuízo total
+- Lucro por ativo
+- Retorno percentual por ativo
+- Média de lucro/prejuízo
+- Ativo que mais lucrou e que mais perdeu
+- Total de ativos e operações na carteira
 
-* Criação da coluna `Valor_total`
-* Separação de compras e vendas
-* Agrupamento por ativo (`groupby`)
-* Cálculo de lucro/prejuízo
+### 📌 Menu Interativo
 
-### 📌 Análises
+[1] Visão geral da carteira
+[2] Lucro por ativo
+[3] Retorno percentual
+[4] Analisar ativos vs valor alvo
+[5] Mostrar tudo
+[0] Sair
 
-* Exibição de:
+O menu permanece ativo até o usuário escolher sair.
 
-  * Compras totais
-  * Vendas totais
-  * Resultado por ativo
-  * Média geral
+### 📌 Insights por Ativo
+Comparação do preço atual com o valor alvo definido:
+- Acima do alvo → caro no momento
+- Abaixo do alvo → possível oportunidade
 
-### 📌 Insights interativos
+## 🧠 Conceitos e Tecnologias Utilizados
 
-* Análise de preço atual vs valor alvo
-* Classificação:
+- **Python** — lógica, funções, tratamento de erros
+- **Pandas** — leitura de CSV, filtros booleanos, groupby, agregações
+- **SQLite3** — criação de banco, inserção e consulta de dados
+- **SQL** — CREATE TABLE, INSERT, SELECT, COUNT
+- Estruturas de repetição e decisão
+- Dicionários e f-strings formatadas
 
-  * Acima do alvo → caro
-  * Abaixo do alvo → oportunidade
+## 💻 Como Executar
 
----
+1. Instale as dependências:
+Nesse caso : pip install pandas
 
-## 🧠 Conceitos utilizados
+2. Prepare seu CSV com as colunas obrigatórias
 
-* Pandas (`DataFrame`)
-* Agregações (mean(),sum())
-* Multiplicação de colunas
-* Filtro booleano
-* `groupby`
-* Operações entre colunas
-* Tratamento de exceções (`try/except`)
-* Estruturas de repetição e decisão
+3. Execute o programa:
+python main.py
 
----
 
-## 🚧 Status do Projeto
+4. Digite o nome do arquivo CSV quando solicitado
 
-Projeto em desenvolvimento 🚧
-
-Atualmente pausado para aprofundamento em **Pandas**, com foco em:
-
-* Manipulação de dados
-* Filtros
-* Agrupamentos
-
-Retorno previsto com melhorias e refatoração do código.
-
----
 
 ## 🔮 Próximos passos 
 
-* [ ] Melhorar organização do código (funções)
-* [ ] Adicionar validações
-* [ ] Aprimorar análises de lucro/prejuízo
-* [ ] Criar novas métricas
-* [ ] Implementar visualizações
+* [ ] Consulta de histórico por ativo específico via SQL
+* [ ] Separação do código em múltiplos arquivos
+* [ ] Integração com yfinance para dados reais da B3
+* [ ] Geração de relatório em .txt
+* [ ] Gráfico de evolução de preço com matplotlib
 
----
+## 🚧 Status
 
-## 💻 Como executar
+Projeto em desenvolvimento ativo — Fase 2 (SQLite) em andamento.
 
-1. Instale as dependências:
-
-```
-pip install pandas
-```
-
-2. Execute o programa:
-
-```
-python main.py
-```
-
----
+obs: Nesse momento estou implementando uma forma dos dados serem extraidos diretamente do SQLite 
+e entendendo o processo de ETL atual, Extract : lê o CSV, Transform: Pandas calcula as métricas, 
+Load: salva no banco
 
 ## 📌 Observações
 
 Este projeto faz parte do meu processo de aprendizado em **Python para análise de dados**.
 Ele será continuamente melhorado conforme avanço nos estudos.
-
----
 
 ## 👨‍💻 Autor
 
