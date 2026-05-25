@@ -80,6 +80,13 @@ def banco_vazio():
     return total == 0
 
 
+def buscar_do_banco():
+    conn = sqlite3.connect("mercado.db")
+    df = pd.read_sql("SELECT * FROM historico_precos",conn)
+    conn.close()
+    return df
+
+
 
 def calcular_metricas(df):
     """Calcula compras, vendas, lucro e média..."""
@@ -219,6 +226,7 @@ def main():
         if not validar_colunas(df):
             print("Corrija o CSV e tente novamente.")
         else:
+            dfsql = buscar_do_banco()
             metricas = calcular_metricas(df)
             
             while True:
