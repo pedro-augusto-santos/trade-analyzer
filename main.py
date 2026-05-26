@@ -86,6 +86,11 @@ def buscar_do_banco():
     conn.close()
     return df
 
+def consultar_ativo(ativo):
+    conn = sqlite3.connect("mercado.db")
+    df = pd.read_sql("SELECT * FROM historico_precos WHERE Ativo = ?",conn, params = (ativo,))
+    conn.close()
+    return df
 
 
 def calcular_metricas(df):
@@ -137,16 +142,17 @@ def menu():
     print("[3] Retorno percentual")
     print("[4] Analisar ativos vs valor alvo")
     print("[5] Mostrar tudo")
+    print("[6] Consultar ativo específico")
     print("[0] Sair")
     print()
 
     while True:
         opcao = input("Por favor escolha uma opção: ").strip()
 
-        if opcao in ["0", "1", "2", "3", "4", "5"]:
+        if opcao in ["0", "1", "2", "3", "4", "5","6"]:
             return opcao
         else:
-            print("Opção inválida. Digite um número entre 0 e 5.")
+            print("Opção inválida. Digite um número entre 0 e 6.")
 
 
 def gerar_insights(opcao, metricas, valores_alvo, df):
@@ -235,7 +241,15 @@ def main():
                     print("Encerrando...")
                     sleep(2)
                     break
-                gerar_insights(opcao, metricas, valores_alvo, df)
+                elif opcao == "6":
+                    ativo = input("Digite o ticker do ativo: ").strip().upper()
+                    resultado = consultar_ativo(ativo)
+                    if resultado.empty:
+                        print("Ativo não encontrado no banco")
+                    else:
+                        print(resultado)
+                else:
+                    gerar_insights(opcao, metricas, valores_alvo, df)
 
 
 main()
