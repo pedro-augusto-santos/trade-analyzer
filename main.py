@@ -1,6 +1,7 @@
 import pandas as pd
 from time import sleep
-import sqlite3
+from database import criar_banco,salvar_no_banco,banco_vazio,buscar_do_banco,consultar_ativo
+from analise import calcular_metricas
 
 texto = "TRADE ANALYZER"
 
@@ -36,6 +37,7 @@ def carregar_dados():
 
     return df
 
+
 def validar_colunas(df):
     colunas_esperadas = {"Data", "Ativo", "Preco", "Tipo_Ordem", "Quantidade"}
     colunas_faltando = colunas_esperadas - set(df.columns)
@@ -45,90 +47,6 @@ def validar_colunas(df):
         return False
     
     return True
-
-def criar_banco():
-    conn = sqlite3.connect("mercado.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS historico_precos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Data TEXT,
-            Ativo TEXT,
-            Preco REAL,
-            Tipo_Ordem TEXT,
-            Quantidade INTEGER,
-            Valor_total REAL
-        )
-    """)
-    
-    conn.commit()
-    conn.close()
-
-def salvar_no_banco(df):
-    conn = sqlite3.connect("mercado.db")
-    df.to_sql("historico_precos", conn, if_exists = "append", index = False)
-    conn.close()
-
-
-def banco_vazio():
-    conn = sqlite3.connect("mercado.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM historico_precos")
-    total = cursor.fetchone()[0]
-    conn.close()
-    return total == 0
-
-
-def buscar_do_banco():
-    conn = sqlite3.connect("mercado.db")
-    df = pd.read_sql("SELECT * FROM historico_precos",conn)
-    conn.close()
-    return df
-
-def consultar_ativo(ativo):
-    conn = sqlite3.connect("mercado.db")
-    df = pd.read_sql("SELECT * FROM historico_precos WHERE Ativo = ?",conn, params = (ativo,))
-    conn.close()
-    return df
-
-
-def calcular_metricas(df):
-    """Calcula compras, vendas, lucro e média..."""
-
-    df["Valor_total"] = df["Quantidade"] * df["Preco"]
-
-    compras = df[df["Tipo_Ordem"] == "Compra"].groupby("Ativo")["Valor_total"].sum()
-    vendas = df[df["Tipo_Ordem"] == "Venda"].groupby("Ativo")["Valor_total"].sum()
-
-    tot_investido = df[df["Tipo_Ordem"] == "Compra"]["Valor_total"].sum()
-    tot_resgatado = df[df["Tipo_Ordem"] == "Venda"]["Valor_total"].sum()
-
-    lucro_ativo = vendas - compras
-
-    ativo_mais_lucrou = lucro_ativo.idxmax()
-    ativo_menos_lucrou = lucro_ativo.idxmin()
-
-    lucro_tot = lucro_ativo.sum()
-
-    retorno_percentual = ((vendas - compras) / compras) * 100
-
-    qty_ativos = df["Ativo"].nunique()
-    total_de_operacoes = len(df)
-
-    media = lucro_ativo.fillna(0).mean()
-
-    return {
-        "tot_investido": tot_investido,
-        "tot_resgatado": tot_resgatado,
-        "media": media,
-        "total_operacoes": total_de_operacoes,
-        "qty_ativos": qty_ativos,
-        "retorno_percentual": retorno_percentual,
-        "lucro_total": lucro_tot,
-        "ativo_menos_lucrou": ativo_menos_lucrou,
-        "ativo_mais_lucrou": ativo_mais_lucrou,
-    }
 
 
 def menu():
@@ -155,7 +73,7 @@ def menu():
             print("Opção inválida. Digite um número entre 0 e 6.")
 
 
-def gerar_insights(opcao, metricas, valores_alvo, df):
+def gerar_insights(metricas,opcao,valores_alvo,df):
 
     print("-" * 30)
 
