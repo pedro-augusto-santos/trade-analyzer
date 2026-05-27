@@ -10,11 +10,14 @@ Transformar dados brutos de operações financeiras em insights claros e úteis,
 ```
 Trade-Analyzer/
 │
-├── main.py
-├── vendas_acoes.csv
-├── mercado.db (gerado automaticamente)
-└── README.md
-
+├── main.py              # controla o fluxo do programa
+├── database.py          # funções relacionadas ao SQLite
+├── analise.py           # funções de cálculo com Pandas
+├── vendas_acoes.csv     # base de dados inicial
+├── mercado.db           # banco SQLite gerado/usado pelo projeto
+├── .gitignore           # Ignora arquivos
+├── README.md            # documentação do projeto
+└── LICENSE              # licença do projeto
 ```
 
 ## 📥 Estrutura do CSV
@@ -57,6 +60,7 @@ O arquivo CSV deve conter as seguintes colunas:
 [3] Retorno percentual
 [4] Analisar ativos vs valor alvo
 [5] Mostrar tudo
+[6] Consultar ativo específico
 [0] Sair
 
 O menu permanece ativo até o usuário escolher sair.

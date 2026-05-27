@@ -73,7 +73,7 @@ def menu():
             print("Opção inválida. Digite um número entre 0 e 6.")
 
 
-def gerar_insights(metricas,opcao,valores_alvo,df):
+def gerar_insights(opcao, metricas, valores_alvo, df):
 
     print("-" * 30)
 
