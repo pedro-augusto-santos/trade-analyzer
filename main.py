@@ -1,7 +1,9 @@
+# main.py
 import pandas as pd
 from time import sleep
-from database import criar_banco,salvar_no_banco,banco_vazio,buscar_do_banco,consultar_ativo
-from analise import calcular_metricas
+from database import criar_banco, salvar_operacoes, operacoes_vazias, precos_vazios, buscar_operacoes, buscar_precos_mercado, consultar_ativo
+from analise import calcular_metricas_mercado, gerar_recomendacoes
+from yfinance_api import atualizar_precos
 
 texto = "TRADE ANALYZER"
 
@@ -41,11 +43,11 @@ def carregar_dados():
 def validar_colunas(df):
     colunas_esperadas = {"Data", "Ativo", "Preco", "Tipo_Ordem", "Quantidade"}
     colunas_faltando = colunas_esperadas - set(df.columns)
-    
+
     if colunas_faltando:
         print(f"Erro: CSV inválido. Colunas faltando: {colunas_faltando}")
         return False
-    
+
     return True
 
 
@@ -58,75 +60,52 @@ def menu():
     print("[1] Visão geral da carteira")
     print("[2] Lucro por ativo")
     print("[3] Retorno percentual")
-    print("[4] Analisar ativos vs valor alvo")
-    print("[5] Mostrar tudo")
+    print("[4] Posições abertas")
+    print("[5] Volatilidade dos ativos")
     print("[6] Consultar ativo específico")
+    print("[7] Atualizar preços via API")
+    print("[8] Recomendações automáticas")
     print("[0] Sair")
     print()
 
     while True:
         opcao = input("Por favor escolha uma opção: ").strip()
 
-        if opcao in ["0", "1", "2", "3", "4", "5","6"]:
+        if opcao in ["0", "1", "2", "3", "4", "5", "6", "7", "8"]:
             return opcao
         else:
-            print("Opção inválida. Digite um número entre 0 e 6.")
+            print("Opção inválida. Digite um número entre 0 e 8.")
 
 
-def gerar_insights(opcao, metricas, valores_alvo, df):
+def gerar_insights(opcao, metricas, dfsql):
 
     print("-" * 30)
 
     if opcao == "1":
-        print(f"Total investido: R$ {metricas['tot_investido']:.2f}")
-        print(f"Total resgatado: R$ {metricas['tot_resgatado']:.2f}")
-        print(f"Lucro total: R$ {metricas['lucro_total']:.2f}")
-        print(f"Média de lucro: R$ {metricas['media']:.2f}")
-        print(f"Ativos na carteira: {metricas['qty_ativos']}")
-        print(f"Total de operações: {metricas['total_operacoes']}")
+        print(f"Ativos monitorados: {metricas['qty_ativos']}")
+        print(f"Total de registros: {metricas['total_registros']}")
+        print(f"\nPreço atual por ativo:\n{metricas['preco_atual'].to_string()}")
+        print(f"\nVariação total por ativo (%):\n{metricas['variacao'].to_string()}")
 
     elif opcao == "2":
-        print(f"Ativo que mais lucrou: {metricas['ativo_mais_lucrou']}")
-        print(f"Ativo que mais perdeu: {metricas['ativo_menos_lucrou']}")
-        print(f"Lucro total da carteira: R$ {metricas['lucro_total']:.2f}")
+        print(f"Variação por ativo (%):\n{metricas['variacao'].to_string()}")
 
     elif opcao == "3":
-        print(f"Retorno percentual por ativo:\n{metricas['retorno_percentual']}")
+        print(f"Variação percentual por ativo:\n{metricas['variacao'].to_string()}")
 
     elif opcao == "4":
-        for ativo in df["Ativo"].unique():
-            preco_atual = df[df["Ativo"] == ativo]["Preco"].iloc[-1]
-            alvo = valores_alvo.get(ativo)
-
-            print(f"\n{ativo}")
-            print(f"Preço atual: R$ {preco_atual:.2f}")
-
-            if alvo is None:
-                print("Valor alvo não cadastrado")
-                continue
-
-            print(f"Valor alvo: R$ {alvo:.2f}")
-
-            if preco_atual > alvo:
-                print("Acima do valor alvo (caro no momento)")
-            elif preco_atual < alvo:
-                print("Abaixo do valor alvo (possível oportunidade)")
-            else:
-                print("No valor exato do alvo")
+        print("Posições abertas disponíveis apenas com operações pessoais importadas.")
 
     elif opcao == "5":
-        print(f"\nTotal investido: R$ {metricas['tot_investido']:.2f}")
-        print(f"Total resgatado: R$ {metricas['tot_resgatado']:.2f}")
-        print(f"Lucro total: R$ {metricas['lucro_total']:.2f}")
-        print(f"Média de lucro: R$ {metricas['media']:.2f}")
-        print(f"Ativos na carteira: {metricas['qty_ativos']}")
-        print(f"Total de operações: {metricas['total_operacoes']}")
-        print(f"\nAtivo que mais lucrou: {metricas['ativo_mais_lucrou']}")
-        print(f"Ativo que mais perdeu: {metricas['ativo_menos_lucrou']}")
-        print(f"\nRetorno percentual por ativo:\n{metricas['retorno_percentual']}")
+        print("Volatilidade por ativo:\n")
+        print(metricas["volatilidade"].to_string())
+
+    elif opcao == "8":
+        recomendacoes = gerar_recomendacoes(dfsql)
+        for linha in recomendacoes:
+            print(linha)
 
     print()
-
 
 def main():
 
@@ -138,36 +117,53 @@ def main():
         "ABEV3": 12
     }
 
-    df = carregar_dados()
+    criar_banco()
 
-    if df is not None:
-        criar_banco()
-        
-
-        if banco_vazio():
-            salvar_no_banco(df)
-
-        if not validar_colunas(df):
-            print("Corrija o CSV e tente novamente.")
+    if operacoes_vazias():
+        df = carregar_dados()
+        if df is not None:
+            if not validar_colunas(df):
+                print("Corrija o CSV e tente novamente.")
+                return
+            df["Valor_total"] = df["Quantidade"] * df["Preco"]
+            salvar_operacoes(df)
         else:
-            dfsql = buscar_do_banco()
-            metricas = calcular_metricas(df)
-            
-            while True:
-                opcao = menu()
-                if opcao == "0":
-                    print("Encerrando...")
-                    sleep(2)
-                    break
-                elif opcao == "6":
-                    ativo = input("Digite o ticker do ativo: ").strip().upper()
-                    resultado = consultar_ativo(ativo)
-                    if resultado.empty:
-                        print("Ativo não encontrado no banco")
-                    else:
-                        print(resultado)
-                else:
-                    gerar_insights(opcao, metricas, valores_alvo, df)
+            print("Não foi possível carregar o arquivo. Encerrando.")
+            return
+
+    if precos_vazios():
+        print("Buscando dados reais da B3...")
+        sleep(1)
+        atualizar_precos()
+
+    dfsql = buscar_precos_mercado()
+    metricas = calcular_metricas_mercado(dfsql)
+
+    while True:
+        opcao = menu()
+
+        if opcao == "0":
+            print("Encerrando...")
+            sleep(2)
+            break
+
+        elif opcao == "6":
+            ativo = input("Digite o ticker do ativo: ").strip().upper()
+            resultado = consultar_ativo(ativo)
+            if resultado.empty:
+                print("Ativo não encontrado no banco")
+            else:
+                print(resultado)
+
+        elif opcao == "7":
+            print("Buscando preços atualizados...")
+            atualizar_precos()
+            dfsql = buscar_precos_mercado()
+            metricas = calcular_metricas_mercado(dfsql)
+            print("Preços atualizados com sucesso!")
+
+        else:
+            gerar_insights(opcao, metricas, dfsql)
 
 
 main()
